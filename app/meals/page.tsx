@@ -38,7 +38,8 @@ export default async function MealsPage() {
   type CookMap = Record<string, Profile>
   const cookByDay: CookMap = {}
   for (const a of cookAssignments ?? []) {
-    const p = (a as { cook_profile: Profile }).cook_profile
+    const raw = (a as unknown as { cook_profile: Profile | Profile[] }).cook_profile
+    const p = Array.isArray(raw) ? raw[0] : raw
     if (p) cookByDay[a.assigned_date] = p
   }
 
