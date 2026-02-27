@@ -624,13 +624,24 @@ export function generateWeeklyAssignments(
       continue
     }
 
-    // Vacuum whole house: Mark only every 5 weeks, otherwise excluded
+    // Vacuum whole house: strict weekly rotation — one person only.
+    // Mark joins every 5th week, otherwise excluded (it's a big job).
     if (taskName.includes("vacuum whole house")) {
-      const isMarksTurn = weekNumber % 5 === 0
-      const vacPool = getTaskPool(task).filter((p) => isMarksTurn || p.name !== "Mark")
-      const pool = vacPool.length > 0 ? vacPool : getTaskPool(task)
-      const { personId, dayStr } = pickPersonAndDay(pool.map(p => p.id), taskMins, days, task.score)
-      record(task.id, personId, dayStr, task.score, taskMins)
+      const vacPool = sortedEligible.filter((p) => weekNumber % 5 === 0 || p.name !== "Mark")
+      const pool = vacPool.length > 0 ? vacPool : sortedEligible
+      const person = pool[weekNumber % pool.length]
+      const bestDay = bestDayFor(person.id, taskMins, days, task.score)
+      record(task.id, person.id, bestDay, task.score, taskMins)
+      continue
+    }
+
+    // Clean main bathroom: strict weekly rotation through non-parents — one person only.
+    if (taskName.includes("clean main bathroom")) {
+      const nonParents = sortedEligible.filter((p) => !["parent", "admin"].includes(effectiveRole(p)))
+      const pool = nonParents.length > 0 ? nonParents : sortedEligible
+      const person = pool[weekNumber % pool.length]
+      const bestDay = bestDayFor(person.id, taskMins, days, task.score)
+      record(task.id, person.id, bestDay, task.score, taskMins)
       continue
     }
 
