@@ -1,26 +1,127 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter), sans-serif;
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-fraunces), Georgia, serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* Great Ocean Road colour tokens */
+  --color-ocean-deep: #1B4F72;
+  --color-ocean-mid: #2E86AB;
+  --color-seafoam: #A8DADC;
+  --color-limestone: #F5F0E8;
+  --color-sand: #E8DCC8;
+  --color-rainforest: #2D6A4F;
+  --color-fern: #52B788;
+  --color-mist: #B7C9D3;
+  --color-cliff-gold: #C9A84C;
+  --color-dusk: #4A3728;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.875rem;
+
+  /* Map shadcn semantics to GOR palette */
+  --background: #F5F0E8;
+  --foreground: #4A3728;
+  --card: #FFFFFF;
+  --card-foreground: #4A3728;
+  --popover: #FFFFFF;
+  --popover-foreground: #4A3728;
+  --primary: #1B4F72;
+  --primary-foreground: #F5F0E8;
+  --secondary: #E8DCC8;
+  --secondary-foreground: #4A3728;
+  --muted: #EDE8DE;
+  --muted-foreground: #7A6E63;
+  --accent: #A8DADC;
+  --accent-foreground: #1B4F72;
+  --destructive: #C0392B;
+  --border: #D4CCBF;
+  --input: #E8DCC8;
+  --ring: #2E86AB;
+  --chart-1: #1B4F72;
+  --chart-2: #2D6A4F;
+  --chart-3: #C9A84C;
+  --chart-4: #2E86AB;
+  --chart-5: #52B788;
+  --sidebar: #1B4F72;
+  --sidebar-foreground: #F5F0E8;
+  --sidebar-primary: #A8DADC;
+  --sidebar-primary-foreground: #1B4F72;
+  --sidebar-accent: #2E86AB;
+  --sidebar-accent-foreground: #F5F0E8;
+  --sidebar-border: rgba(168, 218, 220, 0.2);
+  --sidebar-ring: #A8DADC;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter), sans-serif;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-fraunces), Georgia, serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Wave divider utility */
+.wave-divider {
+  clip-path: ellipse(100% 60% at 50% 100%);
+}
+
+/* Frosted glass utility */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(168, 218, 220, 0.3);
+}
+
+/* Progress bar */
+.progress-fern {
+  background: linear-gradient(90deg, #52B788, #2D6A4F);
 }
