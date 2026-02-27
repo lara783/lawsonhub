@@ -182,7 +182,7 @@ export default async function PrintRosterPage() {
       <body>
         <div className="print-actions">
           <a href="/jobs" className="btn btn-outline">← Back</a>
-          <button className="btn" onClick="window.print()">🖨️ Print / Save PDF</button>
+          <button className="btn" onClick={() => window.print()}>🖨️ Print / Save PDF</button>
         </div>
 
         <div className="header">
