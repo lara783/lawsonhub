@@ -27,6 +27,8 @@ insert into tasks (name, score, frequency, frequency_per_day, estimated_minutes,
 ('Clean main bathroom',              10, 'weekly',      1,  45,   null,                                                true),
 ('Clean master bathroom',            10, 'weekly',      1,  45,   null,                                                true),
 ('Mow lawn',                         10, 'weekly',      1,  60,   null,                                                true),
+('Whipper snipping',                 10, 'weekly',      1,  45,   null,                                                true),
+('Clean the yard',                   10, 'weekly',      1,  45,   null,                                                true),
 ('Cat litter — change pee mat',      3,  'weekly',      1,  10,   'Sam or Amalee only',                                true),
 
 -- Fortnightly
