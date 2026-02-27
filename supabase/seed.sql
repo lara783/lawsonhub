@@ -38,5 +38,5 @@ insert into tasks (name, score, frequency, frequency_per_day, estimated_minutes,
 -- Transport (parent/admin only)
 insert into tasks (name, score, frequency, frequency_per_day, estimated_minutes, notes, assigned_roles, is_active) values
 ('Take kids to school',          3,  'daily',       1,  30,   'Mon–Fri only — whoever is free in the morning', '{parent,admin}', true),
-('Clean pool',                   5,  'weekly',      1,  60,   'Mark''s job every weekend',                     '{parent,admin}', true),
+('Clean pool',                   10, 'weekly',      1,  60,   'Mark''s job every weekend',                     '{parent,admin}', true),
 ('Clean master bedroom',         3,  'weekly',      1,  20,   'Lisa on days off, otherwise Mark',              '{parent,admin}', true);

@@ -460,7 +460,7 @@ export function generateWeeklyAssignments(
         if (isLunchbox) {
           if (dow < 1 || dow > 5) continue
           const kids = eligible.filter(
-            (p) => p.name === "Ollie" || p.name === "Amelie" || p.name === "Amalee"
+            (p) => p.name === "Ollie" || p.name === "Oli" || p.name === "Amelie" || p.name === "Amalee"
           )
           for (const kid of kids) {
             record(task.id, kid.id, dayStr, task.score, taskMins)
