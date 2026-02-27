@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic"
 import { createClient } from "@/lib/supabase/server"
+import { PrintButton } from "./PrintButton"
 import { redirect } from "next/navigation"
 import { format, startOfWeek, addDays } from "date-fns"
 import type { Profile, TaskAssignment } from "@/lib/types"
@@ -182,7 +183,7 @@ export default async function PrintRosterPage() {
       <body>
         <div className="print-actions">
           <a href="/jobs" className="btn btn-outline">← Back</a>
-          <button className="btn" onClick={() => window.print()}>🖨️ Print / Save PDF</button>
+          <PrintButton />
         </div>
 
         <div className="header">
