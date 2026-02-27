@@ -528,7 +528,30 @@ export function generateWeeklyAssignments(
   const sortedEligible = [...eligible].sort((a, b) => a.name.localeCompare(b.name))
   const weekendDays = days.filter((d) => getDay(d) === 6 || getDay(d) === 0)
 
+  // --- YARD TASKS PRE-PASS ---
+  // Clean the yard → Whipper snipping → Mow lawn must happen on the same weekend day,
+  // each assigned to a different person (rotating weekly), Lisa always exempt.
+  const YARD_ORDER = ["clean the yard", "whipper snipping", "mow lawn"]
+  const yardTasksOrdered = YARD_ORDER
+    .map((n) => weeklyTasks.find((t) => t.name.toLowerCase().includes(n)))
+    .filter(Boolean) as typeof weeklyTasks
+  const handledYardTaskIds = new Set<string>()
+
+  if (yardTasksOrdered.length > 0) {
+    const yardPool = sortedEligible.filter((p) => p.name !== "Lisa")
+    const yardDay = weekendDays[0] ?? days[days.length - 1]
+    const yardDayStr = format(yardDay, "yyyy-MM-dd")
+    yardTasksOrdered.forEach((task, i) => {
+      if (yardPool.length === 0) return
+      const person = yardPool[(weekNumber + i) % yardPool.length]
+      record(task.id, person.id, yardDayStr, task.score, task.estimated_minutes ?? 45)
+      handledYardTaskIds.add(task.id)
+    })
+  }
+
   for (const task of weeklyTasks) {
+    // Skip yard tasks — already handled in pre-pass above
+    if (handledYardTaskIds.has(task.id)) continue
     const taskMins = task.estimated_minutes ?? 30
     const taskName = task.name.toLowerCase()
 
@@ -580,14 +603,6 @@ export function generateWeeklyAssignments(
       continue
     }
 
-    // Mow lawn: weekend only, rotates through the whole family week by week
-    if (taskName.includes("mow lawn")) {
-      const mower = sortedEligible[weekNumber % sortedEligible.length]
-      const daysToSearch = weekendDays.length > 0 ? weekendDays : days
-      const mowDay = bestDayFor(mower.id, taskMins, daysToSearch, task.score)
-      record(task.id, mower.id, mowDay, task.score, taskMins)
-      continue
-    }
 
     // Vacuum own room: non-parents each vacuum their own room; parents share one room
     // (Lisa on her day off, Mark otherwise — same logic as master bathroom)
