@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -21,39 +21,15 @@ interface RecipeFormProps {
   }
 }
 
-interface Ingredient {
-  name: string
-  quantity: string
-}
-
 export function RecipeForm({ userId, userColour, existingRecipe }: RecipeFormProps) {
   const [title, setTitle] = useState(existingRecipe?.title ?? "")
   const [description, setDescription] = useState(existingRecipe?.description ?? "")
-  const [instructions, setInstructions] = useState(existingRecipe?.instructions ?? "")
-  const [ingredients, setIngredients] = useState<Ingredient[]>(
-    existingRecipe?.ingredients?.map((i) => ({ name: i.name, quantity: i.quantity ?? "" })) ?? [
-      { name: "", quantity: "" },
-    ]
-  )
+  const [recipeText, setRecipeText] = useState(existingRecipe?.instructions ?? "")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(existingRecipe?.photo_url ?? null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-
-  function addIngredient() {
-    setIngredients((prev) => [...prev, { name: "", quantity: "" }])
-  }
-
-  function removeIngredient(index: number) {
-    setIngredients((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function updateIngredient(index: number, field: "name" | "quantity", value: string) {
-    setIngredients((prev) =>
-      prev.map((ing, i) => (i === index ? { ...ing, [field]: value } : ing))
-    )
-  }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -62,13 +38,34 @@ export function RecipeForm({ userId, userColour, existingRecipe }: RecipeFormPro
     setPhotoPreview(URL.createObjectURL(file))
   }
 
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile()
+        if (blob) {
+          const ext = blob.type.split("/")[1] || "png"
+          const file = new File([blob], `pasted-image.${ext}`, { type: blob.type })
+          setPhotoFile(file)
+          setPhotoPreview(URL.createObjectURL(blob))
+          break
+        }
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    document.addEventListener("paste", handlePaste)
+    return () => document.removeEventListener("paste", handlePaste)
+  }, [handlePaste])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
 
     let photoUrl: string | null = existingRecipe?.photo_url ?? null
 
-    // Upload photo if selected
     if (photoFile) {
       const ext = photoFile.name.split(".").pop()
       const path = `recipes/${userId}-${Date.now()}.${ext}`
@@ -84,45 +81,33 @@ export function RecipeForm({ userId, userColour, existingRecipe }: RecipeFormPro
       }
     }
 
-    const validIngredients = ingredients.filter((i) => i.name.trim())
-
     if (existingRecipe) {
-      // Update existing recipe
       await supabase
         .from("recipes")
-        .update({ title, description: description || null, instructions: instructions || null, photo_url: photoUrl, updated_at: new Date().toISOString() })
+        .update({
+          title,
+          description: description || null,
+          instructions: recipeText || null,
+          photo_url: photoUrl,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", existingRecipe.id)
 
       await supabase.from("recipe_ingredients").delete().eq("recipe_id", existingRecipe.id)
-      if (validIngredients.length > 0) {
-        await supabase.from("recipe_ingredients").insert(
-          validIngredients.map((ing, i) => ({
-            recipe_id: existingRecipe.id,
-            name: ing.name.trim(),
-            quantity: ing.quantity.trim() || null,
-            sort_order: i,
-          }))
-        )
-      }
       router.push(`/meals/recipes/${existingRecipe.id}`)
     } else {
-      // Create new recipe
       const { data: recipe } = await supabase
         .from("recipes")
-        .insert({ title, description: description || null, instructions: instructions || null, photo_url: photoUrl, created_by: userId })
+        .insert({
+          title,
+          description: description || null,
+          instructions: recipeText || null,
+          photo_url: photoUrl,
+          created_by: userId,
+        })
         .select()
         .single()
 
-      if (recipe && validIngredients.length > 0) {
-        await supabase.from("recipe_ingredients").insert(
-          validIngredients.map((ing, i) => ({
-            recipe_id: recipe.id,
-            name: ing.name.trim(),
-            quantity: ing.quantity.trim() || null,
-            sort_order: i,
-          }))
-        )
-      }
       router.push(`/meals/recipes/${recipe?.id ?? ""}`)
     }
 
@@ -158,78 +143,49 @@ export function RecipeForm({ userId, userColour, existingRecipe }: RecipeFormPro
           />
         </div>
 
-        {/* Photo upload */}
+        {/* Photo */}
         <div className="space-y-2">
           <Label className="text-dusk text-xs font-semibold uppercase tracking-wide">Photo (optional)</Label>
-          {photoPreview && (
-            <div className="h-40 rounded-xl overflow-hidden">
+          {photoPreview ? (
+            <div className="relative h-40 rounded-xl overflow-hidden group">
               <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => { setPhotoFile(null); setPhotoPreview(null) }}
+                className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div
+              className="h-28 rounded-xl border-2 border-dashed border-sand bg-limestone flex flex-col items-center justify-center gap-1 text-muted-foreground text-sm cursor-pointer hover:border-ocean-mid transition-colors"
+              onClick={() => document.getElementById("photo-input")?.click()}
+            >
+              <span className="text-2xl">📷</span>
+              <span>Click to upload or paste an image anywhere (⌘V / Ctrl+V)</span>
             </div>
           )}
           <input
+            id="photo-input"
             type="file"
             accept="image/*"
             onChange={handlePhotoChange}
-            className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sand file:text-dusk hover:file:bg-mist cursor-pointer"
+            className="hidden"
           />
         </div>
       </div>
 
-      {/* Ingredients */}
-      <div className="rounded-2xl bg-white border border-sand shadow-sm p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3
-            className="font-semibold text-ocean-deep"
-            style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
-          >
-            Ingredients
-          </h3>
-          <button
-            type="button"
-            onClick={addIngredient}
-            className="text-xs font-semibold text-ocean-mid hover:text-ocean-deep transition-colors"
-          >
-            + Add
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          {ingredients.map((ing, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <Input
-                value={ing.name}
-                onChange={(e) => updateIngredient(i, "name", e.target.value)}
-                placeholder="Ingredient"
-                className="flex-1 bg-limestone border-sand text-sm"
-              />
-              <Input
-                value={ing.quantity}
-                onChange={(e) => updateIngredient(i, "quantity", e.target.value)}
-                placeholder="Amount"
-                className="w-24 bg-limestone border-sand text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => removeIngredient(i)}
-                className="text-muted-foreground hover:text-red-500 text-sm transition-colors w-6 flex-shrink-0"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Instructions */}
+      {/* Full recipe */}
       <div className="rounded-2xl bg-white border border-sand shadow-sm p-5 space-y-2">
         <Label className="text-dusk text-xs font-semibold uppercase tracking-wide">
-          How to make it
+          Recipe — ingredients & method
         </Label>
         <Textarea
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Write the steps here… e.g.&#10;1. Brown the mince&#10;2. Add tomatoes&#10;3. Simmer for 20 mins"
-          rows={8}
+          value={recipeText}
+          onChange={(e) => setRecipeText(e.target.value)}
+          placeholder={"Paste or type the full recipe here…\n\nIngredients:\n- 500g mince\n- 1 onion\n\nMethod:\n1. Brown the mince\n2. Add tomatoes\n3. Simmer for 20 mins"}
+          rows={14}
           className="bg-limestone border-sand text-sm resize-none"
         />
       </div>

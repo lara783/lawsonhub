@@ -7,11 +7,14 @@ interface RecipeCardProps {
   onAddToGroceries?: (recipe: Recipe) => void
 }
 
-export function RecipeCard({ recipe, currentUserId, onAddToGroceries }: RecipeCardProps) {
+export function RecipeCard({ recipe }: RecipeCardProps) {
   const ingredientCount = recipe.ingredients?.length ?? 0
 
   return (
-    <div className="rounded-2xl bg-white border border-sand shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+    <Link
+      href={`/meals/recipes/${recipe.id}`}
+      className="block rounded-2xl bg-white border border-sand shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+    >
       {recipe.photo_url ? (
         <div className="h-40 overflow-hidden">
           <img
@@ -30,14 +33,12 @@ export function RecipeCard({ recipe, currentUserId, onAddToGroceries }: RecipeCa
       )}
 
       <div className="p-4">
-        <Link href={`/meals/recipes/${recipe.id}`}>
-          <h3
-            className="text-lg font-bold text-ocean-deep hover:text-ocean-mid transition-colors line-clamp-1"
-            style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
-          >
-            {recipe.title}
-          </h3>
-        </Link>
+        <h3
+          className="text-lg font-bold text-ocean-deep line-clamp-1"
+          style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
+        >
+          {recipe.title}
+        </h3>
 
         {recipe.description && (
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{recipe.description}</p>
@@ -45,19 +46,11 @@ export function RecipeCard({ recipe, currentUserId, onAddToGroceries }: RecipeCa
 
         <div className="flex items-center justify-between mt-3">
           <span className="text-xs text-muted-foreground">
-            {ingredientCount > 0 ? `${ingredientCount} ingredient${ingredientCount !== 1 ? "s" : ""}` : "No ingredients listed"}
+            {ingredientCount > 0 ? `${ingredientCount} ingredient${ingredientCount !== 1 ? "s" : ""}` : ""}
           </span>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/meals/recipes/${recipe.id}`}
-              className="text-xs font-medium text-ocean-mid hover:text-ocean-deep transition-colors"
-            >
-              View →
-            </Link>
-          </div>
+          <span className="text-xs font-medium text-ocean-mid">View →</span>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

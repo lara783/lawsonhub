@@ -130,7 +130,7 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
               className="font-semibold text-ocean-deep mb-3"
               style={{ fontFamily: "var(--font-fraunces), Georgia, serif" }}
             >
-              How to Make It
+              Recipe
             </h2>
             <div className="text-sm text-dusk whitespace-pre-wrap leading-relaxed">
               {typedRecipe.instructions}
