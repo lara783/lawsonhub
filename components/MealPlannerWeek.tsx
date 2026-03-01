@@ -41,7 +41,7 @@ export function MealPlannerWeek({
     dayStr: string,
     recipeId: string | null,
     customName: string,
-  ) {
+  ): Promise<void> {
     const existing = getMealForDay(dayStr)
     const assignedCook = cookByDay[dayStr]
     const payload = {
@@ -53,21 +53,23 @@ export function MealPlannerWeek({
     }
 
     if (existing) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("meal_plan")
         .update(payload)
         .eq("id", existing.id)
         .select("*, recipe:recipes(*), cook:profiles(*)")
         .single()
+      if (error) throw new Error(error.message)
       if (data) {
         setLocalPlan((prev) => prev.map((m) => (m.meal_date === dayStr ? (data as MealPlan) : m)))
       }
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("meal_plan")
         .insert(payload)
         .select("*, recipe:recipes(*), cook:profiles(*)")
         .single()
+      if (error) throw new Error(error.message)
       if (data) {
         setLocalPlan((prev) => [...prev, data as MealPlan])
       }
@@ -153,10 +155,23 @@ function MealEditForm({
   dayStr: string
   recipes: Recipe[]
   existing?: MealPlan
-  onSave: (dayStr: string, recipeId: string | null, customName: string) => void
+  onSave: (dayStr: string, recipeId: string | null, customName: string) => Promise<void>
 }) {
   const [selectedRecipe, setSelectedRecipe] = useState(existing?.recipe_id ?? "")
   const [customName, setCustomName] = useState(existing?.custom_meal_name ?? "")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave(dayStr, selectedRecipe || null, customName)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save — please try again")
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="border-t border-sand px-4 py-4 bg-limestone/40 space-y-3">
@@ -167,7 +182,8 @@ function MealEditForm({
         <select
           value={selectedRecipe}
           onChange={(e) => setSelectedRecipe(e.target.value)}
-          className="w-full rounded-xl border border-sand bg-white px-3 py-2 text-sm text-dusk focus:outline-none focus:ring-2 focus:ring-ocean-mid"
+          disabled={saving}
+          className="w-full rounded-xl border border-sand bg-white px-3 py-2 text-sm text-dusk focus:outline-none focus:ring-2 focus:ring-ocean-mid disabled:opacity-60"
         >
           <option value="">— Custom / TBD —</option>
           {recipes.map((r) => (
@@ -185,18 +201,26 @@ function MealEditForm({
             type="text"
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
+            disabled={saving}
             placeholder="e.g. BBQ night, Pasta"
-            className="w-full rounded-xl border border-sand bg-white px-3 py-2 text-sm text-dusk focus:outline-none focus:ring-2 focus:ring-ocean-mid"
+            className="w-full rounded-xl border border-sand bg-white px-3 py-2 text-sm text-dusk focus:outline-none focus:ring-2 focus:ring-ocean-mid disabled:opacity-60"
           />
         </div>
       )}
 
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
       <button
-        onClick={() => onSave(dayStr, selectedRecipe || null, customName)}
-        className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         style={{ background: "#1B4F72" }}
       >
-        Save Meal
+        {saving ? "Saving…" : "Save Meal"}
       </button>
     </div>
   )
