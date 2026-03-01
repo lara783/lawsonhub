@@ -22,7 +22,7 @@ export function FamilyCalendar({ profiles, commitments, currentProfile }: Family
     return dow === 0 ? 6 : dow - 1
   })
   const [filteredUsers, setFilteredUsers] = useState<Set<string> | null>(null) // null = show all
-  const [generating, setGenerating] = useState(false)
+  const [generating, setGenerating] = useState<"this" | "next" | null>(null)
   const [genResult, setGenResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   useEffect(() => {
@@ -32,10 +32,11 @@ export function FamilyCalendar({ profiles, commitments, currentProfile }: Family
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i))
   const isAdmin = currentProfile?.role === "admin"
 
-  async function generateJobs() {
-    setGenerating(true)
+  async function generateJobs(weekDate: Date) {
+    const which = weekDate === currentWeek ? "this" : "next"
+    setGenerating(which)
     setGenResult(null)
-    const weekStr = format(currentWeek, "yyyy-MM-dd")
+    const weekStr = format(weekDate, "yyyy-MM-dd")
     const res = await fetch("/api/admin/generate-week", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,8 +47,10 @@ export function FamilyCalendar({ profiles, commitments, currentProfile }: Family
       ok: res.ok && !json.error,
       msg: json.message ?? (json.error ? `Error: ${json.error}` : "Done!"),
     })
-    setGenerating(false)
+    setGenerating(null)
   }
+
+  const nextWeek = addWeeks(currentWeek, 1)
 
   function toggleUser(userId: string) {
     setFilteredUsers((prev) => {
@@ -145,17 +148,25 @@ export function FamilyCalendar({ profiles, commitments, currentProfile }: Family
 
       {/* ── Admin: generate jobs ── */}
       {isAdmin && (
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-sand bg-limestone/60">
-          <span className={`text-xs flex-1 ${genResult ? (genResult.ok ? "text-green-700" : "text-red-600") : "text-muted-foreground"}`}>
-            {genResult ? genResult.msg : "Generate task assignments for this week"}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-sand bg-limestone/60">
+          <span className={`text-xs flex-1 min-w-0 ${genResult ? (genResult.ok ? "text-green-700" : "text-red-600") : "text-muted-foreground"}`}>
+            {genResult ? genResult.msg : "Generate task assignments for a week"}
           </span>
           <button
-            onClick={generateJobs}
-            disabled={generating}
+            onClick={() => generateJobs(currentWeek)}
+            disabled={generating !== null}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-60 transition-opacity hover:opacity-90 flex-shrink-0"
             style={{ background: "#1B4F72" }}
           >
-            {generating ? "Generating…" : "Generate Jobs"}
+            {generating === "this" ? "Generating…" : "Generate This Week"}
+          </button>
+          <button
+            onClick={() => generateJobs(nextWeek)}
+            disabled={generating !== null}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-60 transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ background: "#2E86AB" }}
+          >
+            {generating === "next" ? "Generating…" : "Generate Next Week →"}
           </button>
         </div>
       )}
