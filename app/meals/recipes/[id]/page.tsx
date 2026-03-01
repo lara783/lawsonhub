@@ -7,7 +7,8 @@ import { AddToGroceriesButton } from "@/components/AddToGroceriesButton"
 import { format, startOfWeek } from "date-fns"
 import type { Profile, Recipe } from "@/lib/types"
 
-export default async function RecipeDetailPage({ params }: { params: { id: string } }) {
+export default async function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
@@ -18,7 +19,7 @@ export default async function RecipeDetailPage({ params }: { params: { id: strin
   const { data: recipe } = await supabase
     .from("recipes")
     .select("*, ingredients:recipe_ingredients(*), created_by_profile:profiles!created_by(*)")
-    .eq("id", params.id)
+    .eq("id", id)
     .single()
 
   if (!recipe) redirect("/meals/recipes")
