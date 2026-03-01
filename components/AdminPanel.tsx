@@ -6,7 +6,7 @@ import { UserAvatar } from "./UserAvatar"
 import { ScoreBadge } from "./ScoreBadge"
 import { AdminSwapsTab } from "./AdminSwapsTab"
 import { FamilyEventsPanel } from "./FamilyEventsPanel"
-import { format, startOfWeek } from "date-fns"
+import { format, startOfWeek, addWeeks, subWeeks, addDays } from "date-fns"
 import type { Profile, Task, JobSwapRequest, TaskAssignment, FamilyEvent } from "@/lib/types"
 
 interface AdminPanelProps {
@@ -67,6 +67,7 @@ export function AdminPanel({ profiles: initialProfiles, tasks: initialTasks, swa
   // Schedule
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult] = useState<string | null>(null)
+  const [scheduleWeek, setScheduleWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }))
 
   // Create user form
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -95,6 +96,7 @@ export function AdminPanel({ profiles: initialProfiles, tasks: initialTasks, swa
     const res = await fetch("/api/admin/generate-week", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ week_start: format(scheduleWeek, "yyyy-MM-dd") }),
     })
     const json = await res.json()
     setGenResult(json.message ?? (json.error ? `Error: ${json.error}` : "Done!"))
@@ -300,15 +302,28 @@ export function AdminPanel({ profiles: initialProfiles, tasks: initialTasks, swa
             Generate Weekly Schedule
           </h2>
           <p className="text-sm text-muted-foreground">
-            This will create task assignments for all family members for the current week,
+            This will create task assignments for all family members for the selected week,
             based on their commitments and the fair distribution algorithm.
-            Any existing assignments for this week will be replaced.
+            Any existing assignments for that week will be replaced.
           </p>
-          <div className="bg-limestone rounded-xl p-3 text-sm">
-            <span className="font-medium text-dusk">Week: </span>
-            <span className="text-muted-foreground">
-              {format(startOfWeek(new Date(), { weekStartsOn: 1 }), "d MMMM yyyy")}
+
+          {/* Week selector */}
+          <div className="flex items-center justify-between bg-limestone rounded-xl px-3 py-2">
+            <button
+              onClick={() => { setScheduleWeek(w => subWeeks(w, 1)); setGenResult(null) }}
+              className="p-1.5 rounded-lg hover:bg-sand transition-colors text-dusk font-bold"
+            >
+              ←
+            </button>
+            <span className="text-sm font-medium text-dusk">
+              {format(scheduleWeek, "d MMM")} – {format(addDays(scheduleWeek, 6), "d MMM yyyy")}
             </span>
+            <button
+              onClick={() => { setScheduleWeek(w => addWeeks(w, 1)); setGenResult(null) }}
+              className="p-1.5 rounded-lg hover:bg-sand transition-colors text-dusk font-bold"
+            >
+              →
+            </button>
           </div>
 
           <button
@@ -317,7 +332,7 @@ export function AdminPanel({ profiles: initialProfiles, tasks: initialTasks, swa
             className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: "#1B4F72" }}
           >
-            {generating ? "⏳ Generating…" : "🔄 Generate This Week's Jobs"}
+            {generating ? "⏳ Generating…" : `🔄 Generate Jobs — ${format(scheduleWeek, "d MMM yyyy")}`}
           </button>
 
           {genResult && (
