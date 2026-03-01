@@ -32,19 +32,10 @@ export default async function CalendarPage() {
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {(allProfiles as Profile[] ?? []).map((p) => (
-            <div key={p.id} className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1 border border-sand text-xs font-medium shadow-sm">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.colour }} />
-              {p.name}
-            </div>
-          ))}
-        </div>
-
         <FamilyCalendar
           profiles={allProfiles as Profile[] ?? []}
           commitments={commitments as Commitment[] ?? []}
+          currentProfile={profile as Profile}
         />
       </main>
     </div>

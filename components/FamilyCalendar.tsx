@@ -1,58 +1,112 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns"
 import type { Profile, Commitment } from "@/lib/types"
 
 interface FamilyCalendarProps {
   profiles: Profile[]
   commitments: Commitment[]
+  currentProfile?: Profile
 }
 
 const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-export function FamilyCalendar({ profiles, commitments }: FamilyCalendarProps) {
+export function FamilyCalendar({ profiles, commitments, currentProfile }: FamilyCalendarProps) {
   const today = new Date()
   const [currentWeek, setCurrentWeek] = useState(
     startOfWeek(today, { weekStartsOn: 1 })
   )
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
-    // Default to today if in current week, else Monday
     const dow = today.getDay()
     return dow === 0 ? 6 : dow - 1
   })
+  const [filteredUsers, setFilteredUsers] = useState<Set<string> | null>(null) // null = show all
+  const [generating, setGenerating] = useState(false)
+  const [genResult, setGenResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  useEffect(() => {
+    setGenResult(null)
+  }, [currentWeek])
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i))
+  const isAdmin = currentProfile?.role === "admin"
+
+  async function generateJobs() {
+    setGenerating(true)
+    setGenResult(null)
+    const weekStr = format(currentWeek, "yyyy-MM-dd")
+    const res = await fetch("/api/admin/generate-week", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ week_start: weekStr }),
+    })
+    const json = await res.json()
+    setGenResult({
+      ok: res.ok && !json.error,
+      msg: json.message ?? (json.error ? `Error: ${json.error}` : "Done!"),
+    })
+    setGenerating(false)
+  }
+
+  function toggleUser(userId: string) {
+    setFilteredUsers((prev) => {
+      if (prev === null) {
+        // Currently showing all → show only this one
+        return new Set([userId])
+      }
+      const next = new Set(prev)
+      if (next.has(userId)) {
+        next.delete(userId)
+        return next.size === 0 ? null : next
+      } else {
+        next.add(userId)
+        return next
+      }
+    })
+  }
+
+  function isUserActive(userId: string) {
+    return filteredUsers === null || filteredUsers.has(userId)
+  }
 
   const eventsForDay = useMemo(() => {
     return weekDays.map((day) => {
       const dayStr = format(day, "yyyy-MM-dd")
       const recurDay = day.getDay() // 0=Sun..6=Sat
-      return commitments.filter((c) => {
-        if (c.roster_week) return c.roster_week === format(currentWeek, "yyyy-MM-dd") && (c.recur_days?.includes(recurDay) ?? false)
-        if (c.is_recurring) return c.recur_days?.includes(recurDay) ?? false
-        return c.specific_date === dayStr
-      })
+      return commitments
+        .filter((c) => {
+          if (filteredUsers !== null && !filteredUsers.has(c.user_id)) return false
+          if (c.roster_week) return c.roster_week === format(currentWeek, "yyyy-MM-dd") && (c.recur_days?.includes(recurDay) ?? false)
+          if (c.is_recurring) return c.recur_days?.includes(recurDay) ?? false
+          return c.specific_date === dayStr
+        })
+        .sort((a, b) => a.start_time.localeCompare(b.start_time))
     })
-  }, [weekDays, commitments])
+  }, [weekDays, commitments, filteredUsers, currentWeek])
 
   function EventPill({ event, compact = false }: { event: Commitment; compact?: boolean }) {
     const person = profiles.find((p) => p.id === event.user_id)
     if (!person) return null
     return (
       <div
-        className={`rounded-lg text-white font-medium ${compact ? "px-1.5 py-0.5" : "px-3 py-2"}`}
+        className={`rounded-lg text-white font-medium ${compact ? "px-1.5 py-1" : "px-3 py-2"}`}
         style={{ backgroundColor: person.colour }}
-        title={`${person.name}: ${event.title} (${event.start_time.slice(0,5)}–${event.end_time.slice(0,5)})`}
+        title={`${person.name}: ${event.title} (${event.start_time.slice(0, 5)}–${event.end_time.slice(0, 5)})`}
       >
         {compact ? (
-          <span className="block text-[10px] truncate">{person.name}</span>
+          <>
+            <p className="text-[10px] font-semibold truncate leading-tight">{event.title}</p>
+            <p className="text-[9px] opacity-75 leading-tight">
+              {event.start_time.slice(0, 5)}–{event.end_time.slice(0, 5)}
+            </p>
+          </>
         ) : (
           <>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold truncate">{event.title}</span>
               <span className="text-xs opacity-80 flex-shrink-0">
-                {event.start_time.slice(0,5)}–{event.end_time.slice(0,5)}
+                {event.start_time.slice(0, 5)}–{event.end_time.slice(0, 5)}
               </span>
             </div>
             <span className="text-xs opacity-80">{person.name}</span>
@@ -88,6 +142,58 @@ export function FamilyCalendar({ profiles, commitments }: FamilyCalendarProps) {
   return (
     <div className="rounded-2xl bg-white border border-sand shadow-sm overflow-hidden">
       <WeekNav />
+
+      {/* ── Admin: generate jobs ── */}
+      {isAdmin && (
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-sand bg-limestone/60">
+          <span className={`text-xs flex-1 ${genResult ? (genResult.ok ? "text-green-700" : "text-red-600") : "text-muted-foreground"}`}>
+            {genResult ? genResult.msg : "Generate task assignments for this week"}
+          </span>
+          <button
+            onClick={generateJobs}
+            disabled={generating}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-60 transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ background: "#1B4F72" }}
+          >
+            {generating ? "Generating…" : "Generate Jobs"}
+          </button>
+        </div>
+      )}
+
+      {/* ── Filter bar ── */}
+      <div className="flex flex-wrap gap-2 px-4 py-3 border-b border-sand">
+        <button
+          onClick={() => setFilteredUsers(null)}
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-all ${
+            filteredUsers === null
+              ? "bg-ocean-deep text-white border-ocean-deep"
+              : "bg-white text-dusk border-sand hover:border-ocean-deep/50"
+          }`}
+        >
+          All
+        </button>
+        {profiles.map((p) => {
+          const active = isUserActive(p.id)
+          return (
+            <button
+              key={p.id}
+              onClick={() => toggleUser(p.id)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-all ${
+                active
+                  ? "text-white border-transparent"
+                  : "bg-white text-muted-foreground border-sand opacity-50 hover:opacity-75"
+              }`}
+              style={active ? { backgroundColor: p.colour, borderColor: p.colour } : {}}
+            >
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: active ? "rgba(255,255,255,0.6)" : p.colour }}
+              />
+              {p.name}
+            </button>
+          )
+        })}
+      </div>
 
       {/* ── MOBILE: day tabs + single-day list ── */}
       <div className="md:hidden">

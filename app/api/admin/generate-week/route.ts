@@ -1,11 +1,11 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { format, startOfWeek } from "date-fns"
+import { format, startOfWeek, parseISO } from "date-fns"
 import { generateWeeklyAssignments } from "@/lib/taskDistribution"
 import type { Profile, Commitment, Task } from "@/lib/types"
 
-export async function POST() {
+export async function POST(req: Request) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +27,10 @@ export async function POST() {
     return NextResponse.json({ error: "Admin only" }, { status: 403 })
   }
 
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const body = await req.json().catch(() => ({}))
+  const weekStart = body.week_start
+    ? startOfWeek(parseISO(body.week_start), { weekStartsOn: 1 })
+    : startOfWeek(new Date(), { weekStartsOn: 1 })
   const weekStr = format(weekStart, "yyyy-MM-dd")
 
   // Load data

@@ -390,28 +390,29 @@ export function generateWeeklyAssignments(
       && !washingTaskIds.has(t.id)
   )
 
-  // Pre-pass: assign dishwasher first so we know who's on evening duty before
-  // assigning wipe bench / clear table (they should never stack on the same person)
+  // Pre-pass: assign dishwasher (twice-daily) first so we know who's on evening duty before
+  // assigning wipe bench / clear table (they should never stack on the same person).
+  // Only the specific matched task is handled here; other tasks with "dishwasher" in the name
+  // fall through to the normal loop.
   const dishwasherTask = dailyTasks.find((t) => t.name.toLowerCase().includes("dishwasher"))
-  if (dishwasherTask) {
-    const timesPerDay = dishwasherTask.frequency_per_day ?? 1
+  const dishwasherHandledInPrepass = dishwasherTask && (dishwasherTask.frequency_per_day ?? 1) >= 2
+  if (dishwasherHandledInPrepass && dishwasherTask) {
+    const timesPerDay = dishwasherTask.frequency_per_day!
     const taskMins = Math.ceil((dishwasherTask.estimated_minutes ?? 15) / timesPerDay)
     for (const day of days) {
       const dayStr = format(day, "yyyy-MM-dd")
       const dow = getDay(day)
-      if (timesPerDay === 2) {
-        const todayCook = dailyCook[dayStr]
-        const allIds = eligible.map((p) => p.id)
-        const dishPool = todayCook && allIds.length > 1
-          ? allIds.filter((id) => id !== todayCook)
-          : allIds
-        const morningPerson = pickPersonForSlot(dayStr, dow, dishPool, 7, 10)
-        record(dishwasherTask.id, morningPerson, dayStr, dishwasherTask.score, taskMins, "morning")
-        const eveningPool = dishPool.length > 1 ? dishPool.filter((id) => id !== morningPerson) : dishPool
-        const eveningPerson = pickPersonForSlot(dayStr, dow, eveningPool, 18, 20)
-        record(dishwasherTask.id, eveningPerson, dayStr, dishwasherTask.score, taskMins, "evening")
-        dailyEveningDishwasher[dayStr] = eveningPerson
-      }
+      const todayCook = dailyCook[dayStr]
+      const allIds = eligible.map((p) => p.id)
+      const dishPool = todayCook && allIds.length > 1
+        ? allIds.filter((id) => id !== todayCook)
+        : allIds
+      const morningPerson = pickPersonForSlot(dayStr, dow, dishPool, 7, 10)
+      record(dishwasherTask.id, morningPerson, dayStr, dishwasherTask.score, taskMins, "morning")
+      const eveningPool = dishPool.length > 1 ? dishPool.filter((id) => id !== morningPerson) : dishPool
+      const eveningPerson = pickPersonForSlot(dayStr, dow, eveningPool, 18, 20)
+      record(dishwasherTask.id, eveningPerson, dayStr, dishwasherTask.score, taskMins, "evening")
+      dailyEveningDishwasher[dayStr] = eveningPerson
     }
   }
 
@@ -420,8 +421,9 @@ export function generateWeeklyAssignments(
     const dow = getDay(day)
 
     for (const task of dailyTasks) {
-      // Dishwasher already handled in pre-pass above
-      if (task.name.toLowerCase().includes("dishwasher")) continue
+      // Skip only the specific dishwasher task that was fully handled in the pre-pass (twice-daily split).
+      // A once-daily dishwasher task, or any other admin-added task, falls through normally.
+      if (dishwasherHandledInPrepass && task.id === dishwasherTask!.id) continue
 
       const timesPerDay = task.frequency_per_day ?? 1
       const taskMins = Math.ceil((task.estimated_minutes ?? 15) / timesPerDay)
