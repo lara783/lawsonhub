@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 import { createClient } from "@/lib/supabase/server"
 import { PrintButton } from "./PrintButton"
 import { redirect } from "next/navigation"
-import { format, startOfWeek, addDays } from "date-fns"
+import { format, startOfWeek, addDays, parseISO } from "date-fns"
 import type { Profile, TaskAssignment } from "@/lib/types"
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -15,12 +15,20 @@ const ROLE_ORDER: Record<string, number> = {
   school_kid: 3,
 }
 
-export default async function PrintRosterPage() {
+export default async function PrintRosterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd")
+  const { week: weekParam } = await searchParams
+  const selectedWeekStart = weekParam
+    ? startOfWeek(parseISO(weekParam), { weekStartsOn: 1 })
+    : startOfWeek(new Date(), { weekStartsOn: 1 })
+  const weekStart = format(selectedWeekStart, "yyyy-MM-dd")
   const weekDays = Array.from({ length: 7 }, (_, i) =>
     format(addDays(new Date(weekStart), i), "yyyy-MM-dd")
   )
@@ -182,7 +190,7 @@ export default async function PrintRosterPage() {
       </head>
       <body>
         <div className="print-actions">
-          <a href="/jobs" className="btn btn-outline">← Back</a>
+          <a href={`/jobs${weekParam ? `?week=${weekStart}` : ""}`} className="btn btn-outline">← Back</a>
           <PrintButton />
         </div>
 
