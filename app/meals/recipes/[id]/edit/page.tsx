@@ -23,8 +23,6 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
   if (!recipe) redirect("/meals/recipes")
 
   const typedProfile = profile as Profile
-  const canEdit = typedProfile.role === "admin" || recipe.created_by === user.id
-  if (!canEdit) redirect(`/meals/recipes/${id}`)
 
   return (
     <div className="min-h-screen bg-limestone pb-24 md:pb-8">

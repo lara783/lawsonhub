@@ -35,8 +35,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
   const typedProfile = profile as Profile
   const typedRecipe = recipe as Recipe
-  const canEdit =
-    typedProfile.role === "admin" || typedRecipe.created_by === user.id
+  const canEdit = true
 
   const sortedIngredients = (typedRecipe.ingredients ?? []).sort(
     (a, b) => a.sort_order - b.sort_order
