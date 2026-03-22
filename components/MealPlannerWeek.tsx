@@ -52,27 +52,19 @@ export function MealPlannerWeek({
       custom_meal_name: !recipeId ? customName : null,
     }
 
-    if (existing) {
-      const { data, error } = await supabase
-        .from("meal_plan")
-        .update(payload)
-        .eq("id", existing.id)
-        .select("*, recipe:recipes(*), cook:profiles(*)")
-        .single()
-      if (error) throw new Error(error.message)
-      if (data) {
-        setLocalPlan((prev) => prev.map((m) => (m.meal_date === dayStr ? (data as MealPlan) : m)))
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("meal_plan")
-        .insert(payload)
-        .select("*, recipe:recipes(*), cook:profiles(*)")
-        .single()
-      if (error) throw new Error(error.message)
-      if (data) {
-        setLocalPlan((prev) => [...prev, data as MealPlan])
-      }
+    const { data, error } = await supabase
+      .from("meal_plan")
+      .upsert(payload, { onConflict: "week_start,meal_date" })
+      .select("*, recipe:recipes(*), cook:profiles(*)")
+      .single()
+    if (error) throw new Error(error.message)
+    if (data) {
+      setLocalPlan((prev) => {
+        const exists = prev.some((m) => m.meal_date === dayStr)
+        return exists
+          ? prev.map((m) => (m.meal_date === dayStr ? (data as MealPlan) : m))
+          : [...prev, data as MealPlan]
+      })
     }
     setEditingDay(null)
   }
