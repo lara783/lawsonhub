@@ -26,21 +26,21 @@ export async function middleware(request: NextRequest) {
   )
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
   const isLoginPage = request.nextUrl.pathname === "/login"
   const isPublicPath = request.nextUrl.pathname.startsWith("/_next") ||
     request.nextUrl.pathname.startsWith("/api") ||
     request.nextUrl.pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/)
 
-  if (!user && !isLoginPage && !isPublicPath) {
+  if (!session && !isLoginPage && !isPublicPath) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }
 
-  if (user && isLoginPage) {
+  if (session && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = "/dashboard"
     return NextResponse.redirect(url)
