@@ -1,52 +1,32 @@
-import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const isLoginPage = pathname === "/login"
+  const isPublicPath =
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    /\.(svg|png|jpg|jpeg|gif|webp|ico)$/.test(pathname)
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  if (isPublicPath) return NextResponse.next()
 
-  const isLoginPage = request.nextUrl.pathname === "/login"
-  const isPublicPath = request.nextUrl.pathname.startsWith("/_next") ||
-    request.nextUrl.pathname.startsWith("/api") ||
-    request.nextUrl.pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/)
+  // Check for Supabase auth cookie directly — no SDK, no network call
+  const hasSession = request.cookies.has("sb-ijfsnbpxnysveqcgpitv-auth-token")
 
-  if (!session && !isLoginPage && !isPublicPath) {
+  if (!hasSession && !isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }
 
-  if (session && isLoginPage) {
+  if (hasSession && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = "/dashboard"
     return NextResponse.redirect(url)
   }
 
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {
